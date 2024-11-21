@@ -1,4 +1,4 @@
-import { SearchMode } from "agent-twitter-client";
+import { SearchMode } from "agent-bsky-client";
 import { composeContext } from "@ai16z/eliza";
 import { generateMessageResponse, generateText } from "@ai16z/eliza";
 import { messageCompletionFooter } from "@ai16z/eliza";
@@ -15,7 +15,7 @@ import { stringToUuid } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
 
-const twitterSearchTemplate =
+const bskySearchTemplate =
     `{{timeline}}
 
 {{providers}}
@@ -23,7 +23,7 @@ const twitterSearchTemplate =
 Recent interactions between {{agentName}} and other users:
 {{recentPostInteractions}}
 
-About {{agentName}} (@{{twitterUserName}}):
+About {{agentName}} (@{{bskyUserName}}):
 {{bio}}
 {{lore}}
 {{topics}}
@@ -32,7 +32,7 @@ About {{agentName}} (@{{twitterUserName}}):
 
 {{recentPosts}}
 
-# Task: Respond to the following post in the style and perspective of {{agentName}} (aka @{{twitterUserName}}). Write a {{adjective}} response for {{agentName}} to say directly in response to the post. don't generalize.
+# Task: Respond to the following post in the style and perspective of {{agentName}} (aka @{{bskyUserName}}). Write a {{adjective}} response for {{agentName}} to say directly in response to the post. don't generalize.
 {{currentPost}}
 
 IMPORTANT: Your response CANNOT be longer than 20 words.
@@ -42,7 +42,7 @@ Your response should not contain any questions. Brief, concise statements only. 
 
 ` + messageCompletionFooter;
 
-export class TwitterSearchClient extends ClientBase {
+export class bskySearchClient extends ClientBase {
     private respondedTweets: Set<string> = new Set();
 
     constructor(runtime: IAgentRuntime) {
@@ -114,7 +114,7 @@ export class TwitterSearchClient extends ClientBase {
           // ignore tweets where any of the thread tweets contain a tweet by the bot
           const thread = tweet.thread;
           const botTweet = thread.find(
-              (t) => t.username === this.runtime.getSetting("TWITTER_USERNAME")
+              (t) => t.username === this.runtime.getSetting("bsky_USERNAME")
           );
           return !botTweet;
       })
@@ -157,7 +157,7 @@ export class TwitterSearchClient extends ClientBase {
 
             if (
                 selectedTweet.username ===
-                this.runtime.getSetting("TWITTER_USERNAME")
+                this.runtime.getSetting("bsky_USERNAME")
             ) {
                 console.log("Skipping tweet from bot itself");
                 return;
@@ -175,7 +175,7 @@ export class TwitterSearchClient extends ClientBase {
                 roomId,
                 selectedTweet.username,
                 selectedTweet.name,
-                "twitter"
+                "bsky"
             );
 
             // crawl additional conversation tweets, if there are any
@@ -211,7 +211,7 @@ export class TwitterSearchClient extends ClientBase {
                 .filter(
                     (reply) =>
                         reply.username !==
-                        this.runtime.getSetting("TWITTER_USERNAME")
+                        this.runtime.getSetting("bsky_USERNAME")
                 )
                 .map((reply) => `@${reply.username}: ${reply.text}`)
                 .join("\n");
@@ -219,7 +219,7 @@ export class TwitterSearchClient extends ClientBase {
             let tweetBackground = "";
             if (selectedTweet.isRetweet) {
                 const originalTweet = await this.requestQueue.add(() =>
-                    this.twitterClient.getTweet(selectedTweet.id)
+                    this.bskyClient.getTweet(selectedTweet.id)
                 );
                 tweetBackground = `Retweeting @${originalTweet.username}: ${originalTweet.text}`;
             }
@@ -237,8 +237,8 @@ export class TwitterSearchClient extends ClientBase {
             }
 
             let state = await this.runtime.composeState(message, {
-                twitterClient: this.twitterClient,
-                twitterUserName: this.runtime.getSetting("TWITTER_USERNAME"),
+                bskyClient: this.bskyClient,
+                bskyUserName: this.runtime.getSetting("bsky_USERNAME"),
                 timeline: formattedHomeTimeline,
                 tweetContext: `${tweetBackground}
   
@@ -255,8 +255,8 @@ export class TwitterSearchClient extends ClientBase {
             const context = composeContext({
                 state,
                 template:
-                    this.runtime.character.templates?.twitterSearchTemplate ||
-                    twitterSearchTemplate,
+                    this.runtime.character.templates?.bskySearchTemplate ||
+                    bskySearchTemplate,
             });
 
             const responseContent = await generateMessageResponse({
@@ -283,7 +283,7 @@ export class TwitterSearchClient extends ClientBase {
                         this,
                         response,
                         message.roomId,
-                        this.runtime.getSetting("TWITTER_USERNAME"),
+                        this.runtime.getSetting("bsky_USERNAME"),
                         tweetId
                     );
                     return memories;
@@ -315,7 +315,7 @@ export class TwitterSearchClient extends ClientBase {
                 const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${selectedTweet.id} - ${selectedTweet.username}: ${selectedTweet.text}\nAgent's Output:\n${response.text}`;
 
                 await this.runtime.cacheManager.set(
-                    `twitter/tweet_generation_${selectedTweet.id}.txt`,
+                    `bsky/tweet_generation_${selectedTweet.id}.txt`,
                     responseInfo
                 );
 
