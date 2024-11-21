@@ -1,12 +1,12 @@
-# Eliza 🤖
+# cloudie ☁️
 
 <div align="center">
-  <img src="./docs/static/img/eliza_banner.jpg" alt="Eliza Banner" width="100%" />
+  <img src="./docs/static/img/cloudie_banner.jpg" alt="cloudie Banner" width="100%" />
 </div>
 
 <div align="center">
   
-  📖 [Documentation](https://ai16z.github.io/eliza/) | 🎯 [Examples](https://github.com/thejoven/awesome-eliza)
+  📖 [Documentation](https://ai16z.github.io/cloudie/) | 🎯 [Examples](https://github.com/thejoven/awesome-cloudie)
   
 </div>
 
@@ -46,20 +46,20 @@
 ### Use the Starter (Recommended)
 
 ```bash
-git clone https://github.com/ai16z/eliza-starter.git
+git clone https://github.com/ai16z/cloudie-starter.git
 
 cp .env.example .env
 
 pnpm i && pnpm start
 ```
 
-Then read the [Documentation](https://ai16z.github.io/eliza/) to learn how to customize your Eliza.
+Then read the [Documentation](https://ai16z.github.io/cloudie/) to learn how to customize your cloudie.
 
-### Manually Start Eliza (Only recommended if you know what you are doing)
+### Manually Start cloudie (Only recommended if you know what you are doing)
 
 ```bash
 # Clone the repository
-git clone https://github.com/ai16z/eliza.git
+git clone https://github.com/ai16z/cloudie.git
 
 # Checkout the latest release
 # This project iterates fast, so we recommend checking out the latest release
@@ -76,7 +76,7 @@ cp .env.example .env
 
 Note: .env is optional. If your planning to run multiple distinct agents, you can pass secrets through the character JSON
 
-### Automatically Start Eliza
+### Automatically Start cloudie
 
 This will run everything to setup the project and start the bot with the default character.
 
@@ -92,7 +92,7 @@ sh scripts/start.sh
     - Use `pnpm start --characters="path/to/your/character.json"`
     - Multiple character files can be loaded simultaneously
 
-### Manually Start Eliza
+### Manually Start cloudie
 
 ```bash
 pnpm i
@@ -113,15 +113,15 @@ pnpm install --include=optional sharp
 
 ### Community & contact
 
--   [GitHub Issues](https://github.com/ai16z/eliza/issues). Best for: bugs you encounter using Eliza, and feature proposals.
+-   [GitHub Issues](https://github.com/ai16z/cloudie/issues). Best for: bugs you encounter using cloudie, and feature proposals.
 -   [Discord](https://discord.gg/ai16z). Best for: sharing your applications and hanging out with the community.
 
 ## Contributors
 
-<a href="https://github.com/ai16z/eliza/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=ai16z/eliza" />
+<a href="https://github.com/ai16z/cloudie/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=ai16z/cloudie" />
 </a>
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=ai16z/eliza&type=Date)](https://star-history.com/#ai16z/eliza&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=ai16z/cloudie&type=Date)](https://star-history.com/#ai16z/cloudie&Date)
