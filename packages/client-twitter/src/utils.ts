@@ -1,11 +1,11 @@
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-bsky-client";
 import { embeddingZeroVector } from "@ai16z/eliza";
 import { Content, Memory, UUID } from "@ai16z/eliza";
 import { stringToUuid } from "@ai16z/eliza";
 import { ClientBase } from "./base";
 import { elizaLogger } from "@ai16z/eliza";
 
-const MAX_TWEET_LENGTH = 280; // Updated to Twitter's current character limit
+const MAX_TWEET_LENGTH = 280; // Updated to bsky's current character limit
 
 export const wait = (minTime: number = 1000, maxTime: number = 3000) => {
     const waitTime =
@@ -69,7 +69,7 @@ export async function buildConversationThread(
                 roomId,
                 currentTweet.username,
                 currentTweet.name,
-                "twitter"
+                "bsky"
             );
 
             client.runtime.messageManager.createMemory({
@@ -79,7 +79,7 @@ export async function buildConversationThread(
                 agentId: client.runtime.agentId,
                 content: {
                     text: currentTweet.text,
-                    source: "twitter",
+                    source: "bsky",
                     url: currentTweet.permanentUrl,
                     inReplyTo: currentTweet.inReplyToStatusId
                         ? stringToUuid(
@@ -120,7 +120,7 @@ export async function buildConversationThread(
                 currentTweet.inReplyToStatusId
             );
             try {
-                const parentTweet = await client.twitterClient.getTweet(
+                const parentTweet = await client.bskyClient.getTweet(
                     currentTweet.inReplyToStatusId
                 );
 
@@ -167,7 +167,7 @@ export async function sendTweet(
     client: ClientBase,
     content: Content,
     roomId: UUID,
-    twitterUsername: string,
+    bskyUsername: string,
     inReplyTo: string
 ): Promise<Memory[]> {
     const tweetChunks = splitTweetContent(content.text);
@@ -177,7 +177,7 @@ export async function sendTweet(
     for (const chunk of tweetChunks) {
         const result = await client.requestQueue.add(
             async () =>
-                await client.twitterClient.sendTweet(
+                await client.bskyClient.sendTweet(
                     chunk.trim(),
                     previousTweetId
                 )
@@ -194,7 +194,7 @@ export async function sendTweet(
             timestamp: tweetResult.timestamp * 1000,
             userId: tweetResult.legacy.user_id_str,
             inReplyToStatusId: tweetResult.legacy.in_reply_to_status_id_str,
-            permanentUrl: `https://twitter.com/${twitterUsername}/status/${tweetResult.rest_id}`,
+            permanentUrl: `https://bsky.com/${bskyUsername}/status/${tweetResult.rest_id}`,
             hashtags: [],
             mentions: [],
             photos: [],
@@ -216,7 +216,7 @@ export async function sendTweet(
         userId: client.runtime.agentId,
         content: {
             text: tweet.text,
-            source: "twitter",
+            source: "bsky",
             url: tweet.permanentUrl,
             inReplyTo: tweet.inReplyToStatusId
                 ? stringToUuid(
