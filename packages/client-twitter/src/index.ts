@@ -1,33 +1,33 @@
-import { TwitterPostClient } from "./post.ts";
-import { TwitterSearchClient } from "./search.ts";
-import { TwitterInteractionClient } from "./interactions.ts";
+import { bskyPostClient } from "./post.ts";
+import { bskySearchClient } from "./search.ts";
+import { bskyInteractionClient } from "./interactions.ts";
 import { IAgentRuntime, Client, elizaLogger } from "@ai16z/eliza";
-import { validateTwitterConfig } from "./enviroment.ts";
+import { validatebskyConfig } from "./enviroment.ts";
 import { ClientBase } from "./base.ts";
 
-class TwitterManager {
+class bskyManager {
     client: ClientBase;
-    post: TwitterPostClient;
-    search: TwitterSearchClient;
-    interaction: TwitterInteractionClient;
+    post: bskyPostClient;
+    search: bskySearchClient;
+    interaction: bskyInteractionClient;
     constructor(runtime: IAgentRuntime) {
         this.client = new ClientBase(runtime);
-        this.post = new TwitterPostClient(this.client, runtime);
-        // this.search = new TwitterSearchClient(runtime); // don't start the search client by default
+        this.post = new bskyPostClient(this.client, runtime);
+        // this.search = new bskySearchClient(runtime); // don't start the search client by default
         // this searches topics from character file, but kind of violates consent of random users
         // burns your rate limit and can get your account banned
         // use at your own risk
-        this.interaction = new TwitterInteractionClient(this.client, runtime);
+        this.interaction = new bskyInteractionClient(this.client, runtime);
     }
 }
 
-export const TwitterClientInterface: Client = {
+export const bskyClientInterface: Client = {
     async start(runtime: IAgentRuntime) {
-        await validateTwitterConfig(runtime);
+        await validatebskyConfig(runtime);
 
-        elizaLogger.log("Twitter client started");
+        elizaLogger.log("bsky client started");
 
-        const manager = new TwitterManager(runtime);
+        const manager = new bskyManager(runtime);
 
         await manager.client.init();
 
@@ -38,8 +38,8 @@ export const TwitterClientInterface: Client = {
         return manager;
     },
     async stop(runtime: IAgentRuntime) {
-        elizaLogger.warn("Twitter client does not support stopping yet");
+        elizaLogger.warn("bsky client does not support stopping yet");
     },
 };
 
-export default TwitterClientInterface;
+export default bskyClientInterface;
