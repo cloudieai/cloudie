@@ -1,48 +1,48 @@
 import { IAgentRuntime } from "@ai16z/eliza";
 import { z } from "zod";
 
-export const twitterEnvSchema = z.object({
-    TWITTER_DRY_RUN: z
+export const BSKYEnvSchema = z.object({
+    BSKY_DRY_RUN: z
         .string()
         .transform((val) => val.toLowerCase() === "true"),
-    TWITTER_USERNAME: z.string().min(1, "Twitter username is required"),
-    TWITTER_PASSWORD: z.string().min(1, "Twitter password is required"),
-    TWITTER_EMAIL: z.string().email("Valid Twitter email is required"),
-    TWITTER_COOKIES: z.string().optional(),
+    BSKY_USERNAME: z.string().min(1, "BSKY username is required"),
+    BSKY_PASSWORD: z.string().min(1, "BSKY password is required"),
+    BSKY_EMAIL: z.string().email("Valid BSKY email is required"),
+    BSKY_COOKIES: z.string().optional(),
 });
 
-export type TwitterConfig = z.infer<typeof twitterEnvSchema>;
+export type BSKYConfig = z.infer<typeof BSKYEnvSchema>;
 
-export async function validateTwitterConfig(
+export async function validateBSKYConfig(
     runtime: IAgentRuntime
-): Promise<TwitterConfig> {
+): Promise<BSKYConfig> {
     try {
         const config = {
-            TWITTER_DRY_RUN:
-                runtime.getSetting("TWITTER_DRY_RUN") ||
-                process.env.TWITTER_DRY_RUN,
-            TWITTER_USERNAME:
-                runtime.getSetting("TWITTER_USERNAME") ||
-                process.env.TWITTER_USERNAME,
-            TWITTER_PASSWORD:
-                runtime.getSetting("TWITTER_PASSWORD") ||
-                process.env.TWITTER_PASSWORD,
-            TWITTER_EMAIL:
-                runtime.getSetting("TWITTER_EMAIL") ||
-                process.env.TWITTER_EMAIL,
-            TWITTER_COOKIES:
-                runtime.getSetting("TWITTER_COOKIES") ||
-                process.env.TWITTER_COOKIES,
+            BSKY_DRY_RUN:
+                runtime.getSetting("BSKY_DRY_RUN") ||
+                process.env.BSKY_DRY_RUN,
+            BSKY_USERNAME:
+                runtime.getSetting("BSKY_USERNAME") ||
+                process.env.BSKY_USERNAME,
+            BSKY_PASSWORD:
+                runtime.getSetting("BSKY_PASSWORD") ||
+                process.env.BSKY_PASSWORD,
+            BSKY_EMAIL:
+                runtime.getSetting("BSKY_EMAIL") ||
+                process.env.BSKY_EMAIL,
+            BSKY_COOKIES:
+                runtime.getSetting("BSKY_COOKIES") ||
+                process.env.BSKY_COOKIES,
         };
 
-        return twitterEnvSchema.parse(config);
+        return BSKYEnvSchema.parse(config);
     } catch (error) {
         if (error instanceof z.ZodError) {
             const errorMessages = error.errors
                 .map((err) => `${err.path.join(".")}: ${err.message}`)
                 .join("\n");
             throw new Error(
-                `Twitter configuration validation failed:\n${errorMessages}`
+                `BSKY configuration validation failed:\n${errorMessages}`
             );
         }
         throw error;
