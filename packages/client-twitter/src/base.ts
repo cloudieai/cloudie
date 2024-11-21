@@ -14,7 +14,7 @@ import {
     Scraper,
     SearchMode,
     Tweet,
-} from "agent-twitter-client";
+} from "agent-bsky-client";
 import { EventEmitter } from "events";
 
 export function extractAnswer(text: string): string {
@@ -23,7 +23,7 @@ export function extractAnswer(text: string): string {
     return text.slice(startIndex, endIndex);
 }
 
-type TwitterProfile = {
+type bskyProfile = {
     id: string;
     username: string;
     screenName: string;
@@ -82,8 +82,8 @@ class RequestQueue {
 }
 
 export class ClientBase extends EventEmitter {
-    static _twitterClient: Scraper;
-    twitterClient: Scraper;
+    static _bskyClient: Scraper;
+    bskyClient: Scraper;
     runtime: IAgentRuntime;
     directions: string;
     lastCheckedTweetId: number | null = null;
@@ -92,7 +92,7 @@ export class ClientBase extends EventEmitter {
 
     requestQueue: RequestQueue = new RequestQueue();
 
-    profile: TwitterProfile | null;
+    profile: bskyProfile | null;
 
     async cacheTweet(tweet: Tweet): Promise<void> {
         if (!tweet) {
@@ -100,12 +100,12 @@ export class ClientBase extends EventEmitter {
             return;
         }
 
-        this.runtime.cacheManager.set(`twitter/tweets/${tweet.id}`, tweet);
+        this.runtime.cacheManager.set(`bsky/tweets/${tweet.id}`, tweet);
     }
 
     async getCachedTweet(tweetId: string): Promise<Tweet | undefined> {
         const cached = await this.runtime.cacheManager.get<Tweet>(
-            `twitter/tweets/${tweetId}`
+            `bsky/tweets/${tweetId}`
         );
 
         return cached;
@@ -119,7 +119,7 @@ export class ClientBase extends EventEmitter {
         }
 
         const tweet = await this.requestQueue.add(() =>
-            this.twitterClient.getTweet(tweetId)
+            this.bskyClient.getTweet(tweetId)
         );
 
         await this.cacheTweet(tweet);
@@ -137,11 +137,11 @@ export class ClientBase extends EventEmitter {
     constructor(runtime: IAgentRuntime) {
         super();
         this.runtime = runtime;
-        if (ClientBase._twitterClient) {
-            this.twitterClient = ClientBase._twitterClient;
+        if (ClientBase._bskyClient) {
+            this.bskyClient = ClientBase._bskyClient;
         } else {
-            this.twitterClient = new Scraper();
-            ClientBase._twitterClient = this.twitterClient;
+            this.bskyClient = new Scraper();
+            ClientBase._bskyClient = this.bskyClient;
         }
 
         this.directions =
@@ -153,15 +153,15 @@ export class ClientBase extends EventEmitter {
 
     async init() {
         //test
-        const username = this.runtime.getSetting("TWITTER_USERNAME");
+        const username = this.runtime.getSetting("bsky_USERNAME");
 
         if (!username) {
-            throw new Error("Twitter username not configured");
+            throw new Error("bsky username not configured");
         }
-        // Check for Twitter cookies
-        if (this.runtime.getSetting("TWITTER_COOKIES")) {
+        // Check for bsky cookies
+        if (this.runtime.getSetting("bsky_COOKIES")) {
             const cookiesArray = JSON.parse(
-                this.runtime.getSetting("TWITTER_COOKIES")
+                this.runtime.getSetting("bsky_COOKIES")
             );
 
             await this.setCookiesFromArray(cookiesArray);
@@ -172,37 +172,37 @@ export class ClientBase extends EventEmitter {
             }
         }
 
-        elizaLogger.log("Waiting for Twitter login");
+        elizaLogger.log("Waiting for bsky login");
         while (true) {
-            await this.twitterClient.login(
+            await this.bskyClient.login(
                 username,
-                this.runtime.getSetting("TWITTER_PASSWORD"),
-                this.runtime.getSetting("TWITTER_EMAIL"),
-                this.runtime.getSetting("TWITTER_2FA_SECRET")
+                this.runtime.getSetting("bsky_PASSWORD"),
+                this.runtime.getSetting("bsky_EMAIL"),
+                this.runtime.getSetting("bsky_2FA_SECRET")
             );
 
-            if (await this.twitterClient.isLoggedIn()) {
-                const cookies = await this.twitterClient.getCookies();
+            if (await this.bskyClient.isLoggedIn()) {
+                const cookies = await this.bskyClient.getCookies();
                 await this.cacheCookies(username, cookies);
                 break;
             }
 
-            elizaLogger.error("Failed to login to Twitter trying again...");
+            elizaLogger.error("Failed to login to bsky trying again...");
 
             await new Promise((resolve) => setTimeout(resolve, 2000));
         }
 
-        // Initialize Twitter profile
+        // Initialize bsky profile
         this.profile = await this.fetchProfile(username);
 
         if (this.profile) {
-            elizaLogger.log("Twitter user ID:", this.profile.id);
+            elizaLogger.log("bsky user ID:", this.profile.id);
             elizaLogger.log(
-                "Twitter loaded:",
+                "bsky loaded:",
                 JSON.stringify(this.profile, null, 10)
             );
             // Store profile info for use in responses
-            this.runtime.character.twitterProfile = {
+            this.runtime.character.bskyProfile = {
                 id: this.profile.id,
                 username: this.profile.username,
                 screenName: this.profile.screenName,
@@ -219,7 +219,7 @@ export class ClientBase extends EventEmitter {
 
     async fetchHomeTimeline(count: number): Promise<Tweet[]> {
         elizaLogger.debug("fetching home timeline");
-        const homeTimeline = await this.twitterClient.getUserTweets(
+        const homeTimeline = await this.bskyClient.getUserTweets(
             this.profile.id,
             count
         );
@@ -287,7 +287,7 @@ export class ClientBase extends EventEmitter {
                 const result = await this.requestQueue.add(
                     async () =>
                         await Promise.race([
-                            this.twitterClient.fetchSearchTweets(
+                            this.bskyClient.fetchSearchTweets(
                                 query,
                                 maxTweets,
                                 searchMode,
@@ -375,7 +375,7 @@ export class ClientBase extends EventEmitter {
                             roomId,
                             this.profile.username,
                             this.profile.screenName,
-                            "twitter"
+                            "bsky"
                         );
                     } else {
                         await this.runtime.ensureConnection(
@@ -383,14 +383,14 @@ export class ClientBase extends EventEmitter {
                             roomId,
                             tweet.username,
                             tweet.name,
-                            "twitter"
+                            "bsky"
                         );
                     }
 
                     const content = {
                         text: tweet.text,
                         url: tweet.permanentUrl,
-                        source: "twitter",
+                        source: "bsky",
                         inReplyTo: tweet.inReplyToStatusId
                             ? stringToUuid(
                                   tweet.inReplyToStatusId +
@@ -439,7 +439,7 @@ export class ClientBase extends EventEmitter {
 
         // Get the most recent 20 mentions and interactions
         const mentionsAndInteractions = await this.fetchSearchTweets(
-            `@${this.runtime.getSetting("TWITTER_USERNAME")}`,
+            `@${this.runtime.getSetting("bsky_USERNAME")}`,
             20,
             SearchMode.Latest
         );
@@ -487,7 +487,7 @@ export class ClientBase extends EventEmitter {
             this.runtime.agentId,
             this.profile.username,
             this.runtime.character.name,
-            "twitter"
+            "bsky"
         );
 
         // Save the new tweets as memories
@@ -508,7 +508,7 @@ export class ClientBase extends EventEmitter {
                     roomId,
                     this.profile.username,
                     this.profile.screenName,
-                    "twitter"
+                    "bsky"
                 );
             } else {
                 await this.runtime.ensureConnection(
@@ -516,14 +516,14 @@ export class ClientBase extends EventEmitter {
                     roomId,
                     tweet.username,
                     tweet.name,
-                    "twitter"
+                    "bsky"
                 );
             }
 
             const content = {
                 text: tweet.text,
                 url: tweet.permanentUrl,
-                source: "twitter",
+                source: "bsky",
                 inReplyTo: tweet.inReplyToStatusId
                     ? stringToUuid(tweet.inReplyToStatusId)
                     : undefined,
@@ -556,7 +556,7 @@ export class ClientBase extends EventEmitter {
                     cookie.sameSite || "Lax"
                 }`
         );
-        await this.twitterClient.setCookies(cookieStrings);
+        await this.bskyClient.setCookies(cookieStrings);
     }
 
     async saveRequestMessage(message: Memory, state: State) {
@@ -584,7 +584,7 @@ export class ClientBase extends EventEmitter {
 
             await this.runtime.evaluate(message, {
                 ...state,
-                twitterClient: this.twitterClient,
+                bskyClient: this.bskyClient,
             });
         }
     }
@@ -592,7 +592,7 @@ export class ClientBase extends EventEmitter {
     async loadLatestCheckedTweetId(): Promise<void> {
         const latestCheckedTweetId =
             await this.runtime.cacheManager.get<number>(
-                `twitter/${this.profile.username}/latest_checked_tweet_id`
+                `bsky/${this.profile.username}/latest_checked_tweet_id`
             );
 
         if (latestCheckedTweetId) {
@@ -603,7 +603,7 @@ export class ClientBase extends EventEmitter {
     async cacheLatestCheckedTweetId() {
         if (this.lastCheckedTweetId) {
             await this.runtime.cacheManager.set(
-                `twitter/${this.profile.username}/latest_checked_tweet_id`,
+                `bsky/${this.profile.username}/latest_checked_tweet_id`,
                 this.lastCheckedTweetId
             );
         }
@@ -611,13 +611,13 @@ export class ClientBase extends EventEmitter {
 
     async getCachedTimeline(): Promise<Tweet[] | undefined> {
         return await this.runtime.cacheManager.get<Tweet[]>(
-            `twitter/${this.profile.username}/timeline`
+            `bsky/${this.profile.username}/timeline`
         );
     }
 
     async cacheTimeline(timeline: Tweet[]) {
         await this.runtime.cacheManager.set(
-            `twitter/${this.profile.username}/timeline`,
+            `bsky/${this.profile.username}/timeline`,
             timeline,
             { expires: 10 * 1000 }
         );
@@ -625,7 +625,7 @@ export class ClientBase extends EventEmitter {
 
     async cacheMentions(mentions: Tweet[]) {
         await this.runtime.cacheManager.set(
-            `twitter/${this.profile.username}/mentions`,
+            `bsky/${this.profile.username}/mentions`,
             mentions,
             { expires: 10 * 1000 }
         );
@@ -633,38 +633,38 @@ export class ClientBase extends EventEmitter {
 
     async getCachedCookies(username: string) {
         return await this.runtime.cacheManager.get<any[]>(
-            `twitter/${username}/cookies`
+            `bsky/${username}/cookies`
         );
     }
 
     async cacheCookies(username: string, cookies: any[]) {
         await this.runtime.cacheManager.set(
-            `twitter/${username}/cookies`,
+            `bsky/${username}/cookies`,
             cookies
         );
     }
 
     async getCachedProfile(username: string) {
-        return await this.runtime.cacheManager.get<TwitterProfile>(
-            `twitter/${username}/profile`
+        return await this.runtime.cacheManager.get<bskyProfile>(
+            `bsky/${username}/profile`
         );
     }
 
-    async cacheProfile(profile: TwitterProfile) {
+    async cacheProfile(profile: bskyProfile) {
         await this.runtime.cacheManager.set(
-            `twitter/${profile.username}/profile`,
+            `bsky/${profile.username}/profile`,
             profile
         );
     }
 
-    async fetchProfile(username: string): Promise<TwitterProfile> {
+    async fetchProfile(username: string): Promise<bskyProfile> {
         const cached = await this.getCachedProfile(username);
 
         if (cached) return cached;
 
         try {
             const profile = await this.requestQueue.add(async () => {
-                const profile = await this.twitterClient.getProfile(username);
+                const profile = await this.bskyClient.getProfile(username);
                 // console.log({ profile });
                 return {
                     id: profile.userId,
@@ -678,15 +678,15 @@ export class ClientBase extends EventEmitter {
                               ? this.runtime.character.bio[0]
                               : "",
                     nicknames:
-                        this.runtime.character.twitterProfile?.nicknames || [],
-                } satisfies TwitterProfile;
+                        this.runtime.character.bskyProfile?.nicknames || [],
+                } satisfies bskyProfile;
             });
 
             this.cacheProfile(profile);
 
             return profile;
         } catch (error) {
-            console.error("Error fetching Twitter profile:", error);
+            console.error("Error fetching bsky profile:", error);
 
             return undefined;
         }
