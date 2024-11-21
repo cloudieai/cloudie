@@ -1,4 +1,4 @@
-import { SearchMode, Tweet } from "agent-twitter-client";
+import { SearchMode, Tweet } from "agent-bsky-client";
 import {
     composeContext,
     generateMessageResponse,
@@ -18,14 +18,14 @@ import { ClientBase } from "./base";
 import { buildConversationThread, sendTweet, wait } from "./utils.ts";
 import { embeddingZeroVector } from "@ai16z/eliza";
 
-export const twitterMessageHandlerTemplate =
+export const bskyMessageHandlerTemplate =
     `{{timeline}}
 
 # Knowledge
 {{knowledge}}
 
 # Task: Generate a post for the character {{agentName}}.
-About {{agentName}} (@{{twitterUserName}}):
+About {{agentName}} (@{{bskyUserName}}):
 {{bio}}
 {{lore}}
 {{topics}}
@@ -42,7 +42,7 @@ Recent interactions between {{agentName}} and other users:
 {{recentPosts}}
 
 
-# Task: Generate a post/reply in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}) while using the thread of tweets as additional context:
+# Task: Generate a post/reply in the voice, style and perspective of {{agentName}} (@{{bskyUserName}}) while using the thread of tweets as additional context:
 Current Post:
 {{currentPost}}
 Thread of Tweets You Are Replying To:
@@ -51,12 +51,12 @@ Thread of Tweets You Are Replying To:
 
 {{actions}}
 
-# Task: Generate a post in the voice, style and perspective of {{agentName}} (@{{twitterUserName}}). Include an action, if appropriate. {{actionNames}}:
+# Task: Generate a post in the voice, style and perspective of {{agentName}} (@{{bskyUserName}}). Include an action, if appropriate. {{actionNames}}:
 {{currentPost}}
 ` + messageCompletionFooter;
 
-export const twitterShouldRespondTemplate =
-    `# INSTRUCTIONS: Determine if {{agentName}} (@{{twitterUserName}}) should respond to the message and participate in the conversation. Do not comment. Just respond with "true" or "false".
+export const bskyShouldRespondTemplate =
+    `# INSTRUCTIONS: Determine if {{agentName}} (@{{bskyUserName}}) should respond to the message and participate in the conversation. Do not comment. Just respond with "true" or "false".
 
 Response options are RESPOND, IGNORE and STOP .
 
@@ -71,7 +71,7 @@ If {{agentName}} concludes a conversation and isn't part of the conversation any
 
 {{recentPosts}}
 
-IMPORTANT: {{agentName}} (aka @{{twitterUserName}}) is particularly sensitive about being annoying, so if there is any doubt, it is better to IGNORE than to RESPOND.
+IMPORTANT: {{agentName}} (aka @{{bskyUserName}}) is particularly sensitive about being annoying, so if there is any doubt, it is better to IGNORE than to RESPOND.
 
 {{currentPost}}
 
@@ -82,7 +82,7 @@ Thread of Tweets You Are Replying To:
 # INSTRUCTIONS: Respond with [RESPOND] if {{agentName}} should respond, or [IGNORE] if {{agentName}} should not respond to the last message and [STOP] if {{agentName}} should stop participating in the conversation.
 ` + shouldRespondFooter;
 
-export class TwitterInteractionClient {
+export class bskyInteractionClient {
     client: ClientBase;
     runtime: IAgentRuntime;
 
@@ -92,25 +92,25 @@ export class TwitterInteractionClient {
     }
 
     async start() {
-        const handleTwitterInteractionsLoop = () => {
-            this.handleTwitterInteractions();
+        const handlebskyInteractionsLoop = () => {
+            this.handlebskyInteractions();
             setTimeout(
-                handleTwitterInteractionsLoop,
+                handlebskyInteractionsLoop,
                 (Math.floor(Math.random() * (5 - 2 + 1)) + 2) * 60 * 1000
             ); // Random interval between 2-5 minutes
         };
-        handleTwitterInteractionsLoop();
+        handlebskyInteractionsLoop();
     }
 
-    async handleTwitterInteractions() {
-        elizaLogger.log("Checking Twitter interactions");
+    async handlebskyInteractions() {
+        elizaLogger.log("Checking bsky interactions");
 
-        const twitterUsername = this.client.profile.username;
+        const bskyUsername = this.client.profile.username;
         try {
             // Check for mentions
             const tweetCandidates = (
                 await this.client.fetchSearchTweets(
-                    `@${twitterUsername}`,
+                    `@${bskyUsername}`,
                     20,
                     SearchMode.Latest
                 )
@@ -145,7 +145,7 @@ export class TwitterInteractionClient {
                         roomId,
                         tweet.username,
                         tweet.name,
-                        "twitter"
+                        "bsky"
                     );
 
                     const thread = await buildConversationThread(
@@ -174,9 +174,9 @@ export class TwitterInteractionClient {
             // Save the latest checked tweet ID to the file
             await this.client.cacheLatestCheckedTweetId();
 
-            elizaLogger.log("Finished checking Twitter interactions");
+            elizaLogger.log("Finished checking bsky interactions");
         } catch (error) {
-            elizaLogger.error("Error handling Twitter interactions:", error);
+            elizaLogger.error("Error handling bsky interactions:", error);
         }
     }
 
@@ -245,8 +245,8 @@ export class TwitterInteractionClient {
                 .join("\n");
 
         let state = await this.runtime.composeState(message, {
-            twitterClient: this.client.twitterClient,
-            twitterUserName: this.runtime.getSetting("TWITTER_USERNAME"),
+            bskyClient: this.client.bskyClient,
+            bskyUserName: this.runtime.getSetting("bsky_USERNAME"),
             currentPost,
             formattedConversation,
             timeline: formattedHomeTimeline,
@@ -287,9 +287,9 @@ export class TwitterInteractionClient {
             state,
             template:
                 this.runtime.character.templates
-                    ?.twitterShouldRespondTemplate ||
+                    ?.bskyShouldRespondTemplate ||
                 this.runtime.character?.templates?.shouldRespondTemplate ||
-                twitterShouldRespondTemplate,
+                bskyShouldRespondTemplate,
         });
 
         const shouldRespond = await generateShouldRespond({
@@ -308,9 +308,9 @@ export class TwitterInteractionClient {
             state,
             template:
                 this.runtime.character.templates
-                    ?.twitterMessageHandlerTemplate ||
+                    ?.bskyMessageHandlerTemplate ||
                 this.runtime.character?.templates?.messageHandlerTemplate ||
-                twitterMessageHandlerTemplate,
+                bskyMessageHandlerTemplate,
         });
 
         elizaLogger.debug("Interactions prompt:\n" + context);
@@ -337,7 +337,7 @@ export class TwitterInteractionClient {
                         this.client,
                         response,
                         message.roomId,
-                        this.runtime.getSetting("TWITTER_USERNAME"),
+                        this.runtime.getSetting("bsky_USERNAME"),
                         tweet.id
                     );
                     return memories;
@@ -374,7 +374,7 @@ export class TwitterInteractionClient {
                 const responseInfo = `Context:\n\n${context}\n\nSelected Post: ${tweet.id} - ${tweet.username}: ${tweet.text}\nAgent's Output:\n${response.text}`;
 
                 await this.runtime.cacheManager.set(
-                    `twitter/tweet_generation_${tweet.id}.txt`,
+                    `bsky/tweet_generation_${tweet.id}.txt`,
                     responseInfo
                 );
                 await wait();
@@ -423,7 +423,7 @@ export class TwitterInteractionClient {
                     roomId,
                     currentTweet.username,
                     currentTweet.name,
-                    "twitter"
+                    "bsky"
                 );
 
                 this.runtime.messageManager.createMemory({
@@ -433,7 +433,7 @@ export class TwitterInteractionClient {
                     agentId: this.runtime.agentId,
                     content: {
                         text: currentTweet.text,
-                        source: "twitter",
+                        source: "bsky",
                         url: currentTweet.permanentUrl,
                         inReplyTo: currentTweet.inReplyToStatusId
                             ? stringToUuid(
@@ -446,7 +446,7 @@ export class TwitterInteractionClient {
                     createdAt: currentTweet.timestamp * 1000,
                     roomId,
                     userId:
-                        currentTweet.userId === this.twitterUserId
+                        currentTweet.userId === this.bskyUserId
                             ? this.runtime.agentId
                             : stringToUuid(currentTweet.userId),
                     embedding: embeddingZeroVector,
@@ -473,7 +473,7 @@ export class TwitterInteractionClient {
                     currentTweet.inReplyToStatusId
                 );
                 try {
-                    const parentTweet = await this.twitterClient.getTweet(
+                    const parentTweet = await this.bskyClient.getTweet(
                         currentTweet.inReplyToStatusId
                     );
 
