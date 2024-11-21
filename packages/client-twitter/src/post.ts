@@ -1,4 +1,4 @@
-import { Tweet } from "agent-twitter-client";
+import { Tweet } from "agent-bsky-client";
 import {
     composeContext,
     generateText,
@@ -10,12 +10,12 @@ import {
 import { elizaLogger } from "@ai16z/eliza";
 import { ClientBase } from "./base.ts";
 
-const twitterPostTemplate = `{{timeline}}
+const bskyPostTemplate = `{{timeline}}
 
 # Knowledge
 {{knowledge}}
 
-About {{agentName}} (@{{twitterUserName}}):
+About {{agentName}} (@{{bskyUserName}}):
 {{bio}}
 {{lore}}
 {{postDirections}}
@@ -26,14 +26,14 @@ About {{agentName}} (@{{twitterUserName}}):
 
 {{characterPostExamples}}
 
-# Task: Generate a post in the voice and style of {{agentName}}, aka @{{twitterUserName}}
+# Task: Generate a post in the voice and style of {{agentName}}, aka @{{bskyUserName}}
 Write a single sentence post that is {{adjective}} about {{topic}} (without mentioning {{topic}} directly), from the perspective of {{agentName}}. Try to write something totally different than previous posts. Do not add commentary or acknowledge this request, just write the post.
 Your response should not contain any questions. Brief, concise statements only. No emojis. Use \\n\\n (double spaces) between statements.`;
 
 const MAX_TWEET_LENGTH = 280;
 
 /**
- * Truncate text to fit within the Twitter character limit, ensuring it ends at a complete sentence.
+ * Truncate text to fit within the bsky character limit, ensuring it ends at a complete sentence.
  */
 function truncateToCompleteSentence(text: string): string {
     if (text.length <= MAX_TWEET_LENGTH) {
@@ -62,7 +62,7 @@ function truncateToCompleteSentence(text: string): string {
     return text.slice(0, MAX_TWEET_LENGTH - 3).trim() + "...";
 }
 
-export class TwitterPostClient {
+export class bskyPostClient {
     client: ClientBase;
     runtime: IAgentRuntime;
 
@@ -75,8 +75,8 @@ export class TwitterPostClient {
             const lastPost = await this.runtime.cacheManager.get<{
                 timestamp: number;
             }>(
-                "twitter/" +
-                    this.runtime.getSetting("TWITTER_USERNAME") +
+                "bsky/" +
+                    this.runtime.getSetting("bsky_USERNAME") +
                     "/lastPost"
             );
 
@@ -121,7 +121,7 @@ export class TwitterPostClient {
                 this.runtime.agentId,
                 this.client.profile.username,
                 this.runtime.character.name,
-                "twitter"
+                "bsky"
             );
 
             let homeTimeline: Tweet[] = [];
@@ -149,7 +149,7 @@ export class TwitterPostClient {
             const state = await this.runtime.composeState(
                 {
                     userId: this.runtime.agentId,
-                    roomId: stringToUuid("twitter_generate_room"),
+                    roomId: stringToUuid("bsky_generate_room"),
                     agentId: this.runtime.agentId,
                     content: {
                         text: topics,
@@ -157,7 +157,7 @@ export class TwitterPostClient {
                     },
                 },
                 {
-                    twitterUserName: this.client.profile.username,
+                    bskyUserName: this.client.profile.username,
                     timeline: formattedHomeTimeline,
                 }
             );
@@ -165,8 +165,8 @@ export class TwitterPostClient {
             const context = composeContext({
                 state,
                 template:
-                    this.runtime.character.templates?.twitterPostTemplate ||
-                    twitterPostTemplate,
+                    this.runtime.character.templates?.bskyPostTemplate ||
+                    bskyPostTemplate,
             });
 
             elizaLogger.debug("generate post prompt:\n" + context);
@@ -185,7 +185,7 @@ export class TwitterPostClient {
             // Use the helper function to truncate to complete sentence
             const content = truncateToCompleteSentence(formattedTweet);
 
-            if (this.runtime.getSetting("TWITTER_DRY_RUN") === "true") {
+            if (this.runtime.getSetting("bsky_DRY_RUN") === "true") {
                 elizaLogger.info(
                     `Dry run: would have posted tweet: ${content}`
                 );
@@ -197,7 +197,7 @@ export class TwitterPostClient {
 
                 const result = await this.client.requestQueue.add(
                     async () =>
-                        await this.client.twitterClient.sendTweet(content)
+                        await this.client.bskyClient.sendTweet(content)
                 );
                 const body = await result.json();
                 const tweetResult = body.data.create_tweet.tweet_results.result;
@@ -213,7 +213,7 @@ export class TwitterPostClient {
                     userId: this.client.profile.id,
                     inReplyToStatusId:
                         tweetResult.legacy.in_reply_to_status_id_str,
-                    permanentUrl: `https://twitter.com/${this.runtime.getSetting("TWITTER_USERNAME")}/status/${tweetResult.rest_id}`,
+                    permanentUrl: `https://bsky.com/${this.runtime.getSetting("bsky_USERNAME")}/status/${tweetResult.rest_id}`,
                     hashtags: [],
                     mentions: [],
                     photos: [],
@@ -223,7 +223,7 @@ export class TwitterPostClient {
                 } as Tweet;
 
                 await this.runtime.cacheManager.set(
-                    `twitter/${this.client.profile.username}/lastPost`,
+                    `bsky/${this.client.profile.username}/lastPost`,
                     {
                         id: tweet.id,
                         timestamp: Date.now(),
@@ -253,7 +253,7 @@ export class TwitterPostClient {
                     content: {
                         text: newTweetContent.trim(),
                         url: tweet.permanentUrl,
-                        source: "twitter",
+                        source: "bsky",
                     },
                     roomId,
                     embedding: embeddingZeroVector,
